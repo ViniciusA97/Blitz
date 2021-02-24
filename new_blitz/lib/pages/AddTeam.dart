@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:new_blitz/menu_team.dart';
 import 'package:toast/toast.dart';
 
 class AddTeam extends StatefulWidget{
