@@ -1,4 +1,4 @@
-package com.example.new_blitz
+package com.project.new_blitz
 
 import android.os.Bundle
 

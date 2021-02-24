@@ -1,7 +1,9 @@
 
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:new_blitz/pages/CreateUser.dart';
+import 'package:flutter/widgets.dart';
 
-import 'menu_team.dart';
 
 class HomePage extends StatefulWidget{
 
@@ -12,6 +14,23 @@ class HomePage extends StatefulWidget{
 
 class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> list = new List<Map<String, dynamic>>();
+
+  final PermissionHandler _permissionHandler = PermissionHandler();
+
+  void _requestPermission(PermissionGroup permission) async{
+    await _permissionHandler.requestPermissions([permission]);
+  }
+
+  @override
+  void initState() {
+    asyncFunc();
+    super.initState();
+  }
+
+  void asyncFunc() async {
+      this._requestPermission(PermissionGroup.storage);
+    
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +52,7 @@ class _HomePageState extends State<HomePage> {
                color: Colors.amber,
                onPressed: () {
                   Navigator.push(context,
-                    MaterialPageRoute(builder: (context)=> MenuTeam(list))
+                    MaterialPageRoute(builder: (context)=> CreateUser())
                   );
                },
                
