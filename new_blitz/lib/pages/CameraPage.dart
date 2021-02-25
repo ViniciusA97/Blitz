@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'dart:async';
 import 'package:path_provider/path_provider.dart';
-
+import 'dart:io' show File;
+import 'package:image_picker/image_picker.dart';
 
 class CameraPage extends StatefulWidget{
  
@@ -17,6 +18,10 @@ class _CameraPageState extends State<CameraPage>{
   List cameras;
   int selectedCameraIdx;
   String imagePath;
+  File _image;
+  final picker = ImagePicker();
+  bool _isPicture = false;
+
 
   Future<void> _initializeControllerFuture;
 
@@ -40,79 +45,7 @@ class _CameraPageState extends State<CameraPage>{
 
   }
 
-  Future _initCameraController(CameraDescription cameraDescription) async {
-    
-    if (controller != null) {
-      await controller.dispose();
-    }
-    controller = CameraController(cameraDescription, ResolutionPreset.veryHigh);
-    controller.addListener(() {
-      if (mounted) {
-        setState(() {});
-      }
-      if (controller.value.hasError) {
-        print('Camera error ${controller.value.errorDescription}');
-      }
-    });
-    try {
-      await controller.initialize();
-    } on CameraException catch (e) {
-    }
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  Widget _cameraPreviewWidget() {
-    if (controller == null || !controller.value.isInitialized) {
-      return const Text(
-        'Loading',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 20.0,
-          fontWeight: FontWeight.w900,
-        ),
-      );
-  }
-
-  return AspectRatio(
-      aspectRatio: controller.value.aspectRatio,
-      child: CameraPreview(controller),
-    );
-  }
-
-  void takePicture() async{
-     try {
-        var dir = await getExternalStorageDirectory();
-        var finalPath = dir.path +"/${DateTime.now()}.png";
-        print("[INFO][CAMERA-PATH]: "+finalPath);
-        await controller.takePicture(finalPath);
-        print("[INFO][CAMERA-PICTURE]: Successful picture saved on "+finalPath);
-        Navigator.pop(context, finalPath);
-        } catch (e) {
-        print("[INFO][CAMERA-PICTURE]: Unsuccessful picture saved. error:");
-        print(e);
-      }
-  }
-
-  void changeCam(){
-    var total = cameras.length;
-    if(this.selectedCameraIdx == total-1){
-      setState(() {
-      this.selectedCameraIdx = 0;
-      });
-    }else{
-      setState(() {
-      this.selectedCameraIdx +=1;
-      });
-    }
-
-    _initCameraController(cameras[selectedCameraIdx]);
-
-  }
-
-
-  @override
+    @override
   Widget build(BuildContext context) {
     return
     WillPopScope(
@@ -142,7 +75,9 @@ class _CameraPageState extends State<CameraPage>{
                     RaisedButton(onPressed: () async{
                         await takePicture();
                       }, child: Icon(Icons.camera, color: Colors.white,), color: Colors.orange,),
-                    RaisedButton(onPressed: (){}, color: Colors.orange, child: Icon(Icons.add_photo_alternate, color: Colors.white,))
+                    RaisedButton(onPressed: () async{
+                      await _imgFromGallery();
+                    }, color: Colors.orange, child: Icon(Icons.add_photo_alternate, color: Colors.white,))
                   ],
                 ),
               )
@@ -153,6 +88,148 @@ class _CameraPageState extends State<CameraPage>{
         ),
     ));
   }
+
+  Widget _cameraPreviewWidget() {
+    if (controller == null || !controller.value.isInitialized) {
+      return const Text(
+        'Loading',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 20.0,
+          fontWeight: FontWeight.w900,
+        ),
+      );
+  }
+
+  return AspectRatio(
+      aspectRatio: controller.value.aspectRatio,
+      child: CameraPreview(controller),
+    );
+  }
+
+  void openDialog(){
+    showDialog(
+      context: context,
+      builder: (_) => new Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius:
+            BorderRadius.all(
+            Radius.circular(10.0))),
+          child: Container(
+            height: MediaQuery.of(context).size.height*0.5,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Text("Preview da imagem"),
+                CircleAvatar(
+                        backgroundImage: Image.file(new File(_image.path)).image,
+                        radius: 100,
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    FlatButton(onPressed: (){
+                      Navigator.pop(context);
+                      _onUnACepptPicture();
+                    }, child: Icon(Icons.close, color: Colors.red,)),
+                    FlatButton(onPressed: (){
+                      Navigator.pop(context);
+                      _onAcceptPicture();}, child: Icon(Icons.check_circle_outline_outlined, color: Colors.green,))
+                  ],
+                )
+              ],
+            ),
+          ),
+        )
+      );
+  }
+
+
+  Future _initCameraController(CameraDescription cameraDescription) async {
+    
+    if (controller != null) {
+      await controller.dispose();
+    }
+    controller = CameraController(cameraDescription, ResolutionPreset.veryHigh);
+    controller.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+      if (controller.value.hasError) {
+        print('Camera error ${controller.value.errorDescription}');
+      }
+    });
+    try {
+      await controller.initialize();
+    } on CameraException catch (e) {
+    }
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void takePicture() async{
+     try {
+        var dir = await getExternalStorageDirectory();
+        var finalPath = dir.path +"/${DateTime.now()}.png";
+        print("[INFO][CAMERA-PATH]: "+finalPath);
+        await controller.takePicture(finalPath);
+        print("[INFO][CAMERA-PICTURE]: Successful picture saved on "+finalPath);
+        setState(() {
+          _image = new File(finalPath);
+          _isPicture = true;
+        });
+        this.openDialog();
+        //Navigator.pop(context, finalPath);
+        } catch (e) {
+        print("[INFO][CAMERA-PICTURE]: Unsuccessful picture saved. error:");
+        print(e);
+      }
+  }
+
+  void changeCam(){
+    var total = cameras.length;
+    if(this.selectedCameraIdx == total-1){
+      setState(() {
+      this.selectedCameraIdx = 0;
+      });
+    }else{
+      setState(() {
+      this.selectedCameraIdx +=1;
+      });
+    }
+    _initCameraController(cameras[selectedCameraIdx]);
+  }
+
+  _imgFromGallery() async {
+    var image = null;
+    try{
+       image =  await picker.getImage(source: ImageSource.gallery);
+    }catch(e){
+      print("[ERROR AO PICKAR IMAGEM]: "+e.toString());
+       image = null;
+    }
+
+    if(image!=null){
+      print("[IMAGEM PICKADA][SOURCE]: "+image.path);
+      setState(() {
+        _image = new File(image.path);
+      });
+      this.openDialog();
+    }
+  }
+
+  _onAcceptPicture(){
+    print("[LOG][PICTURE] Imagem aceita. Path da imagem: "+_image.path);
+    Navigator.pop(context, _image.path);
+  }
+
+  _onUnACepptPicture(){
+    print("[LOG][PICTURE] Imagem rejeitada, pronto para excluir. Path da imagem: "+_image.path);
+    _image.delete();
+    print("[LOG][PICTURE] Imagem deletada!");
+  }
+
 
 
 
